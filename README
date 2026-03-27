@@ -1,0 +1,41 @@
+## presentacion : ppt -> resumen proyecto contexto modelo base de datos arquitectura protocolo tecnologia. prueba entregable link del repositorio.
+
+# Gestión de Reservas y Eventos
+
+## Requisitos previos
+- Python 3.x instalado
+- pip disponible
+
+## Instalación de dependencias
+
+### 1. Crear el entorno virtual (Windows)
+```
+mkdir arquitectura1
+cd arquitectura1
+py -3 -m venv .venv
+```
+
+### 2. Activar el entorno virtual (Windows)
+```
+.venv\Scripts\activate
+```
+
+### 3. Instalar Flask y dependencias
+```
+pip install -r requirements.txt
+```
+
+Dependencias incluidas:
+- Flask==3.1.3
+- Werkzeug>=3.1.0
+- Jinja2>=3.1.2
+- click>=8.1.3
+- itsdangerous>=2.2.0
+- blinker>=1.9.0
+
+## Ejecutar la aplicación
+```
+flask --app arquitectura1/app.py run
+```
+
+La aplicación estará disponible en: http://127.0.0.1:5000
