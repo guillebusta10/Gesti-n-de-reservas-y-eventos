@@ -84,32 +84,27 @@ def obtener_reservas():
     try:
         conexion = obtener_conexion()
         cursor = conexion.cursor()
-        
+        # Cambiamos a LEFT JOIN para asegurar que se vean todos los tickets 
+        # que no estén en estado 'disponible'
         query = """
-            SELECT t.id, u.nombre, e.nombre, t.fecha_expiracion
+            SELECT t.id, COALESCE(u.nombre, 'Sin nombre'), e.nombre, t.estado
             FROM tickets t
-            JOIN usuarios u ON t.usuario_id = u.id
+            LEFT JOIN usuarios u ON t.usuario_id = u.id
             JOIN eventos e ON t.evento_id = e.id
-            WHERE t.estado = 'reservado';
+            WHERE t.estado IN ('reservado', 'confirmado')
+            ORDER BY t.id DESC;
         """
         cursor.execute(query)
         reservas_db = cursor.fetchall()
-        
-        lista_reservas = []
-        for res in reservas_db:
-            lista_reservas.append({
-                "ticket_id": res[0],
-                "usuario_nombre": res[1],
-                "evento_nombre": res[2],
-                "expira": str(res[3])
-            })
-            
+        lista_reservas = [
+            {"ticket_id": r[0], "usuario_nombre": r[1], "evento_nombre": r[2], "estado": r[3]} 
+            for r in reservas_db
+        ]
         conexion.close()
         return jsonify(lista_reservas)
-        
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    
+      
 
 @app.route("/reservar", methods=["POST"])
 def reservar_ticket():
@@ -185,7 +180,7 @@ def eliminar_reserva(ticket_id):
             SET estado = 'disponible',
                 usuario_id = NULL,
                 fecha_expiracion = NULL
-            WHERE id = %s AND estado = 'reservado'
+            WHERE id = %s 
             RETURNING id;
         """
         cursor.execute(query, (ticket_id,))
