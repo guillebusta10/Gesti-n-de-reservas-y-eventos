@@ -5,13 +5,11 @@ import time
 
 app = Flask(__name__)
 
-# Credenciales de tu base de datos
 DB_HOST = "localhost"
 DB_NAME = "eventos_db"
 DB_USER = "postgres"
 DB_PASS = "101610"
 
-# Función para abrir la conexión a la base de datos
 def obtener_conexion():
     conexion = psycopg.connect(
         host=DB_HOST,
@@ -84,8 +82,7 @@ def obtener_reservas():
     try:
         conexion = obtener_conexion()
         cursor = conexion.cursor()
-        # Cambiamos a LEFT JOIN para asegurar que se vean todos los tickets 
-        # que no estén en estado 'disponible'
+    
         query = """
             SELECT t.id, COALESCE(u.nombre, 'Sin nombre'), e.nombre, t.estado
             FROM tickets t
@@ -149,7 +146,6 @@ def confirmar_reserva():
     try:
         conexion = obtener_conexion()
         cursor = conexion.cursor()
-        # Solo confirma si NO ha expirado el tiempo
         query = """
             UPDATE tickets
             SET estado = 'confirmado',
