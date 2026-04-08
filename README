@@ -39,3 +39,16 @@ flask --app arquitectura1/app.py run
 ```
 
 La aplicación estará disponible en: http://127.0.0.1:5000
+
+
+## arquitectura1/
+├── app.py                          ← solo rutas HTTP
+├── config.py                       ← configuración de BD
+├── db.py                           ← conexión a BD
+├── repositories/
+│   ├── __init__.py
+│   ├── evento_repo.py              ← queries de eventos
+│   └── ticket_repo.py              ← queries de tickets/reservas
+└── services/
+    ├── __init__.py
+    └── reserva_service.py          ← lógica de negocio
