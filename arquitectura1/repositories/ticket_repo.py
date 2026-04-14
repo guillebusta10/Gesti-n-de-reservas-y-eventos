@@ -1,13 +1,12 @@
 from db import obtener_conexion
 
-
 def obtener_disponibles(evento_id):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
     query = """
         SELECT id FROM tickets
         WHERE evento_id = %s
-          AND (estado = 'disponible' OR (estado = 'reservado' AND fecha_expiracion < NOW()))
+            AND estado IN ('disponible', 'reservado')        
         ORDER BY id ASC;
     """
     cursor.execute(query, (evento_id,))
@@ -42,7 +41,6 @@ def bloquear(ticket_id, usuario_id):
             usuario_id = %s,
             fecha_expiracion = NOW() + INTERVAL '30 seconds'
         WHERE id = %s
-          AND (estado = 'disponible' OR (estado = 'reservado' AND fecha_expiracion < NOW()))
         RETURNING id;
     """
     cursor.execute(query, (usuario_id, ticket_id))
@@ -55,18 +53,26 @@ def bloquear(ticket_id, usuario_id):
 def confirmar(ticket_id, usuario_id):
     conexion = obtener_conexion()
     cursor = conexion.cursor()
-    query = """
-        UPDATE tickets
-        SET estado = 'confirmado',
-            fecha_expiracion = NULL
-        WHERE id = %s AND usuario_id = %s AND estado = 'reservado' AND fecha_expiracion >= NOW()
-        RETURNING id;
-    """
-    cursor.execute(query, (ticket_id, usuario_id))
-    resultado = cursor.fetchone()
-    conexion.commit()
+    
+    cursor.execute("SELECT usuario_id FROM tickets WHERE id = %s AND estado = 'reservado'", (ticket_id,))
+    fila = cursor.fetchone()
+    
+    
+    if fila:
+        query = """
+            UPDATE tickets
+            SET estado = 'confirmado', fecha_expiracion = NULL
+            WHERE id = %s AND usuario_id = %s
+            RETURNING id;
+        """
+        cursor.execute(query, (ticket_id, usuario_id))
+        resultado = cursor.fetchone()
+        conexion.commit()
+        conexion.close()
+        return resultado
+    
     conexion.close()
-    return resultado
+    return None
 
 
 def liberar(ticket_id):
