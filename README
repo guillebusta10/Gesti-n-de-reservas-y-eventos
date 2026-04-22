@@ -41,7 +41,21 @@ flask --app arquitectura1/app.py run
 La aplicación estará disponible en: http://127.0.0.1:5000
 
 
-## arquitectura
+## Tests unitarios
+
+### Correr todos los tests
+```
+pytest tests/ -v
+```
+
+Los tests no requieren base de datos activa (usan mocks).
+
+Cobertura:
+- `tests/test_reserva_service.py` — lógica de negocio
+- `tests/test_routes.py`          — endpoints HTTP
+- `tests/test_repositorios.py`    — repositorios con mock de BD
+
+## Arquitectura
 ├── app.py                          ← solo rutas HTTP
 ├── config.py                       ← configuración de BD
 ├── db.py                           ← conexión a BD
@@ -49,6 +63,10 @@ La aplicación estará disponible en: http://127.0.0.1:5000
 │   ├── __init__.py
 │   ├── evento_repo.py              ← queries de eventos
 │   └── ticket_repo.py              ← queries de tickets/reservas
-└── services/
-    ├── __init__.py
-    └── reserva_service.py          ← lógica de negocio
+├── services/
+│   ├── __init__.py
+│   └── reserva_service.py          ← lógica de negocio
+└── tests/
+    ├── test_reserva_service.py
+    ├── test_routes.py
+    └── test_repositorios.py
