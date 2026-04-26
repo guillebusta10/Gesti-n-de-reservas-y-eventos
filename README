@@ -43,17 +43,44 @@ La aplicación estará disponible en: http://127.0.0.1:5000
 
 ## Tests unitarios
 
-### Correr todos los tests
+### Requisitos previos
+Asegúrate de tener el entorno virtual activado:
 ```
-pytest tests/ -v
+.venv\Scripts\activate
 ```
 
-Los tests no requieren base de datos activa (usan mocks).
+### 1. Tests unitarios (sin base de datos)
+No requieren Docker ni BD activa; usan mocks.
+```
+cd arquitectura1
+python -m pytest tests/test_reserva_service.py tests/test_routes.py tests/test_repositorios.py -v
+```
 
 Cobertura:
-- `tests/test_reserva_service.py` — lógica de negocio
+- `tests/test_reserva_service.py` — lógica de negocio (reservar, confirmar, cancelar)
 - `tests/test_routes.py`          — endpoints HTTP
 - `tests/test_repositorios.py`    — repositorios con mock de BD
+
+### 2. Test de condición de carrera (requiere BD)
+Demuestra la race condition en el sistema de reservas simultáneas.
+Requiere tener Docker corriendo con el contenedor de PostgreSQL activo.
+
+```
+docker-compose up -d
+python -m pytest tests/test_condicion_carrera.py -v -s
+```
+
+Escenarios incluidos:
+- `test_race_condition_sin_proteccion` — **falla intencionalmente** para evidenciar que el código actual permite que varios usuarios "ganen" el mismo ticket al mismo tiempo.
+- `test_race_condition_con_proteccion` — **pasa**, demuestra que agregar `AND estado = 'disponible'` en el UPDATE elimina la condición de carrera.
+
+### 3. Correr todos los tests a la vez
+```
+docker-compose up -d
+python -m pytest tests/ -v -s
+```
+
+> Nota: `test_condicion_carrera.py::test_race_condition_sin_proteccion` falla de forma esperada; su propósito es exponer el bug existente.
 
 ## Arquitectura
 ├── app.py                          ← solo rutas HTTP
@@ -69,4 +96,5 @@ Cobertura:
 └── tests/
     ├── test_reserva_service.py
     ├── test_routes.py
-    └── test_repositorios.py
+    ├── test_repositorios.py
+    └── test_condicion_carrera.py   ← prueba de race condition (requiere BD)
