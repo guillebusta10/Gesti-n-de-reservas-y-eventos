@@ -1,224 +1,224 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>Prueba de Reservas - Contador y Admin</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f9f9f9; }
-        .caja { background: white; border: 1px solid #ddd; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        h1, h2 { color: #333; }
-        #respuesta { background: #222; color: #0f0; padding: 15px; border-radius: 5px; font-family: monospace; }
-        .evento-item, .ticket-item { margin-bottom: 10px; padding: 15px; background: #eef; border-radius: 6px; border: 1px solid #ccd; }
-        .btn-accion { margin-left: 10px; cursor: pointer; background: #007bff; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-weight: bold; }
-        .btn-accion:hover { background: #0056b3; }
-        .btn-eliminar { margin-left: 15px; background: #dc3545; color: white; border: none; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-weight: bold; }
-        .btn-eliminar:hover { background: #c82333; }
-        .contador { font-size: 24px; color: #dc3545; font-weight: bold; }
-        #zona-temporizador { display: none; background: #fff3cd; border: 1px solid #ffeeba; padding: 15px; border-radius: 5px; margin-top: 15px; }
-    </style>
-</head>
-<body>
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <title>Prueba de Reservas - Contador y Admin</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 40px; background-color: #f9f9f9; }
+            .caja { background: white; border: 1px solid #ddd; padding: 20px; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+            h1, h2 { color: #333; }
+            #respuesta { background: #222; color: #0f0; padding: 15px; border-radius: 5px; font-family: monospace; }
+            .evento-item, .ticket-item { margin-bottom: 10px; padding: 15px; background: #eef; border-radius: 6px; border: 1px solid #ccd; }
+            .btn-accion { margin-left: 10px; cursor: pointer; background: #007bff; color: white; border: none; padding: 8px 12px; border-radius: 4px; font-weight: bold; }
+            .btn-accion:hover { background: #0056b3; }
+            .btn-eliminar { margin-left: 15px; background: #dc3545; color: white; border: none; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-weight: bold; }
+            .btn-eliminar:hover { background: #c82333; }
+            .contador { font-size: 24px; color: #dc3545; font-weight: bold; }
+            #zona-temporizador { display: none; background: #fff3cd; border: 1px solid #ffeeba; padding: 15px; border-radius: 5px; margin-top: 15px; }
+        </style>
+    </head>
+    <body>
 
-    <h1>🎫 Sistema de Reservas</h1>
+        <h1>🎫 Sistema de Reservas</h1>
 
-    <div class="caja">
-        <h2>1. Eventos</h2>
-        <button class="btn-accion" onclick="cargarEventos()">Cargar Eventos</button>
-        <div id="lista-eventos" style="margin-top: 15px;"></div>
-    </div>
-
-    <div class="caja">
-        <h2>2. Tickets Disponibles</h2>
-        <h3 id="nombre_evento" style="color: #0056b3;">Selecciona un evento primero</h3>
-        <label>Tu ID de Usuario:</label>
-        <input type="number" id="input_usuario" value="1" style="padding: 5px; width: 60px;"><br><br>
-        
-        <div id="lista-tickets"></div>
-
-        <div id="zona-temporizador">
-            <p>Tienes <span id="reloj" class="contador">30</span> segundos para confirmar la compra del <b>Ticket #<span id="ticket_bloqueado"></span></b>.</p>
-            <button onclick="confirmarCompra()" class="btn-accion" style="background:#28a745;">✅ Confirmar Compra Definitiva</button>
+        <div class="caja">
+            <h2>1. Eventos</h2>
+            <button class="btn-accion" onclick="cargarEventos()">Cargar Eventos</button>
+            <div id="lista-eventos" style="margin-top: 15px;"></div>
         </div>
-    </div>
 
-    <div class="caja" style="border-left: 5px solid #17a2b8;">
-        <h2>🛠️ 3. Panel Admin (Gestión de Tickets)</h2>
-        <button onclick="cargarReservas()" class="btn-accion" style="background:#17a2b8;">🔄 Cargar Reservas Totales</button>
-        <div id="lista-reservas" style="margin-top: 15px;">
-            <p style="color: #666;">Haz clic en el botón superior para cargar la base de datos.</p>
+        <div class="caja">
+            <h2>2. Tickets Disponibles</h2>
+            <h3 id="nombre_evento" style="color: #0056b3;">Selecciona un evento primero</h3>
+            <label>Tu ID de Usuario:</label>
+            <input type="number" id="input_usuario" value="1" style="padding: 5px; width: 60px;"><br><br>
+            
+            <div id="lista-tickets"></div>
+
+            <div id="zona-temporizador">
+                <p>Tienes <span id="reloj" class="contador">30</span> segundos para confirmar la compra del <b>Ticket #<span id="ticket_bloqueado"></span></b>.</p>
+                <button onclick="confirmarCompra()" class="btn-accion" style="background:#28a745;">✅ Confirmar Compra Definitiva</button>
+            </div>
         </div>
-    </div>
 
-    <div class="caja">
-        <h2>💻 Consola del Servidor</h2>
-        <pre id="respuesta">Esperando acciones...</pre>
-    </div>
+        <div class="caja" style="border-left: 5px solid #17a2b8;">
+            <h2>🛠️ 3. Panel Admin (Gestión de Tickets)</h2>
+            <button onclick="cargarReservas()" class="btn-accion" style="background:#17a2b8;">🔄 Cargar Reservas Totales</button>
+            <div id="lista-reservas" style="margin-top: 15px;">
+                <p style="color: #666;">Haz clic en el botón superior para cargar la base de datos.</p>
+            </div>
+        </div>
 
-    <script>
-        let intervaloReloj;
+        <div class="caja">
+            <h2>💻 Consola del Servidor</h2>
+            <pre id="respuesta">Esperando acciones...</pre>
+        </div>
 
-        // --- 1. EVENTOS ---
-        async function cargarEventos() {
-            document.getElementById("lista-eventos").innerHTML = "Cargando...";
-            const data = await (await fetch('/eventos')).json();
-            document.getElementById("lista-eventos").innerHTML = "";
-            data.forEach(e => {
-                document.getElementById("lista-eventos").innerHTML += `
-                <div class="evento-item">
-                    <b>${e.nombre}</b>
-                    <button class="btn-accion" onclick="verTickets(${e.id}, '${e.nombre}')">Ver Tickets Disponibles</button>
-                </div>`;
-            });
-        }
+        <script>
+            let intervaloReloj;
 
-        // --- 2. VER TICKETS ---
-        async function verTickets(eventoId, nombre) {
-            document.getElementById("nombre_evento").innerText = "Tickets para: " + nombre;
-            const data = await (await fetch('/eventos/' + eventoId + '/tickets')).json();
-            const lista = document.getElementById("lista-tickets");
-            lista.innerHTML = "";
-            
-            if(data.length === 0) {
-                lista.innerHTML = "<p style='color:red;'>Agotado. No hay tickets disponibles en este momento.</p>";
-                return;
+            // --- 1. EVENTOS ---
+            async function cargarEventos() {
+                document.getElementById("lista-eventos").innerHTML = "Cargando...";
+                const data = await (await fetch('/eventos')).json();
+                document.getElementById("lista-eventos").innerHTML = "";
+                data.forEach(e => {
+                    document.getElementById("lista-eventos").innerHTML += `
+                    <div class="evento-item">
+                        <b>${e.nombre}</b>
+                        <button class="btn-accion" onclick="verTickets(${e.id}, '${e.nombre}')">Ver Tickets Disponibles</button>
+                    </div>`;
+                });
             }
-            
-            data.forEach(t => {
-                lista.innerHTML += `
-                <span class="ticket-item" style="display:inline-block; margin-right: 10px; margin-bottom:10px;">
-                    🎟️ Ticket #${t.ticket_id}
-                    <button class="btn-accion" onclick="bloquearTicket(${t.ticket_id})">Reservar</button>
-                </span>`;
-            });
-        }
 
-        // --- 3. PRE-RESERVA (30s) ---
-        async function bloquearTicket(ticketId) {
-            const usuarioId = document.getElementById("input_usuario").value;
-            const resp = await fetch('/reservar', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ticket_id: ticketId, usuario_id: parseInt(usuarioId) })
-            });
-            const data = await resp.json();
-            
-            if(resp.ok) {
-                iniciarTemporizador(ticketId);
-                document.getElementById("respuesta").innerText = "Bloqueo exitoso. Tienes 30 segundos.";
-                cargarReservas(); // Actualiza el admin automáticamente
-            } else {
-                alert(data.error); 
-            }
-        }
-
-        // --- 4. TEMPORIZADOR ---
-        function iniciarTemporizador(ticketId) {
-            clearInterval(intervaloReloj); 
-            document.getElementById("zona-temporizador").style.display = "block";
-            document.getElementById("ticket_bloqueado").innerText = ticketId;
-            document.getElementById("lista-tickets").innerHTML = ""; 
-            
-            let segundos = 30;
-            document.getElementById("reloj").innerText = segundos;
-            
-            intervaloReloj = setInterval(() => {
-                segundos--;
-                document.getElementById("reloj").innerText = segundos;
-                
-                if(segundos <= 0) {
-                    clearInterval(intervaloReloj);
-                    document.getElementById("zona-temporizador").style.display = "none";
-                    alert("¡Tiempo agotado! El ticket fue liberado.");
-                    document.getElementById("nombre_evento").innerText = "Elige un evento de nuevo";
-                    cargarReservas(); 
-                }
-            }, 1000); 
-        }
-
-        // --- 5. COMPRA FINAL ---
-        async function confirmarCompra() {
-            const ticketId = document.getElementById("ticket_bloqueado").innerText;
-            const usuarioId = document.getElementById("input_usuario").value;
-            
-            const resp = await fetch('/confirmar', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ticket_id: parseInt(ticketId), usuario_id: parseInt(usuarioId) })
-            });
-            const data = await resp.json();
-            
-            if(resp.ok) {
-                clearInterval(intervaloReloj); 
-                document.getElementById("zona-temporizador").style.display = "none";
-                document.getElementById("respuesta").innerText = "¡FELICIDADES! Compra confirmada.";
-                alert("¡Compra Exitosa!");
-                cargarReservas();
-            } else {
-                alert(data.error);
-            }
-        }
-
-        // --- 6. PANEL ADMIN MEJORADO ---
-        async function cargarReservas() {
-            const respuestaDiv = document.getElementById("respuesta");
-            const lista = document.getElementById("lista-reservas");
-            lista.innerHTML = "Buscando reservas en la base de datos...";
-            
-            try {
-                const resp = await fetch('/reservas');
-                const data = await resp.json();
-                
+            // --- 2. VER TICKETS ---
+            async function verTickets(eventoId, nombre) {
+                document.getElementById("nombre_evento").innerText = "Tickets para: " + nombre;
+                const data = await (await fetch('/eventos/' + eventoId + '/tickets')).json();
+                const lista = document.getElementById("lista-tickets");
                 lista.innerHTML = "";
                 
-                if (data.length === 0) {
-                    lista.innerHTML = "<p>No hay ninguna reserva activa ni confirmada.</p>";
-                    respuestaDiv.innerText = "Base de datos consultada: 0 reservas.";
+                if(data.length === 0) {
+                    lista.innerHTML = "<p style='color:red;'>Agotado. No hay tickets disponibles en este momento.</p>";
                     return;
                 }
                 
-                data.forEach(r => {
-                    // Pintamos de verde si está confirmado, o de amarillo si solo está bloqueado (30s)
-                    const colorFondo = r.estado === 'confirmado' ? '#d4edda' : '#fff3cd'; 
-                    const colorBorde = r.estado === 'confirmado' ? '#c3e6cb' : '#ffeeba'; 
-                    
+                data.forEach(t => {
                     lista.innerHTML += `
-                    <div class="ticket-item" style="background: ${colorFondo}; border-color: ${colorBorde};">
-                        <b>Ticket #${r.ticket_id}</b> | 👤 Usuario: ${r.usuario_nombre} <br>
-                        🎪 Evento: ${r.evento_nombre} <br>
-                        📌 Estado: <b style="text-transform: uppercase;">${r.estado}</b>
-                        
-                        <button class="btn-eliminar" onclick="liberarAdmin(${r.ticket_id})">
-                            🗑️ Eliminar / Liberar Ticket
-                        </button>
-                    </div>`;
+                    <span class="ticket-item" style="display:inline-block; margin-right: 10px; margin-bottom:10px;">
+                        🎟️ Ticket #${t.ticket_id}
+                        <button class="btn-accion" onclick="bloquearTicket(${t.ticket_id})">Reservar</button>
+                    </span>`;
                 });
-                respuestaDiv.innerText = "Lista de reservas totales actualizada.";
-            } catch (error) {
-                lista.innerHTML = "<p style='color:red;'>Error al cargar las reservas.</p>";
-                respuestaDiv.innerText = "Error Admin: " + error;
             }
-        }
 
-        // Lógica para el botón de Eliminar
-        async function liberarAdmin(ticketId) {
-            const respuestaDiv = document.getElementById("respuesta");
-            respuestaDiv.innerText = "Liberando ticket " + ticketId + " a la fuerza...";
-            
-            try {
-                const resp = await fetch('/reservas/' + ticketId, { method: 'DELETE' });
+            // --- 3. PRE-RESERVA (30s) ---
+            async function bloquearTicket(ticketId) {
+                const usuarioId = document.getElementById("input_usuario").value;
+                const resp = await fetch('/reservar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ticket_id: ticketId, usuario_id: parseInt(usuarioId) })
+                });
                 const data = await resp.json();
                 
-                respuestaDiv.innerText = JSON.stringify(data, null, 2);
-                
-                // Refrescamos la tabla para que el ticket desaparezca visualmente
-                cargarReservas();
-                
-                // Si justo estabas viendo los tickets, limpiamos para no descuadrar la vista
-                document.getElementById("lista-tickets").innerHTML = ""; 
-            } catch (error) {
-                respuestaDiv.innerText = "Error al liberar: " + error;
+                if(resp.ok) {
+                    iniciarTemporizador(ticketId);
+                    document.getElementById("respuesta").innerText = "Bloqueo exitoso. Tienes 30 segundos.";
+                    cargarReservas(); // Actualiza el admin automáticamente
+                } else {
+                    alert(data.error); 
+                }
             }
-        }
-    </script>
-</body>
-</html>
+
+            // --- 4. TEMPORIZADOR ---
+            function iniciarTemporizador(ticketId) {
+                clearInterval(intervaloReloj); 
+                document.getElementById("zona-temporizador").style.display = "block";
+                document.getElementById("ticket_bloqueado").innerText = ticketId;
+                document.getElementById("lista-tickets").innerHTML = ""; 
+                
+                let segundos = 30;
+                document.getElementById("reloj").innerText = segundos;
+                
+                intervaloReloj = setInterval(() => {
+                    segundos--;
+                    document.getElementById("reloj").innerText = segundos;
+                    
+                    if(segundos <= 0) {
+                        clearInterval(intervaloReloj);
+                        document.getElementById("zona-temporizador").style.display = "none";
+                        alert("¡Tiempo agotado! El ticket fue liberado.");
+                        document.getElementById("nombre_evento").innerText = "Elige un evento de nuevo";
+                        cargarReservas(); 
+                    }
+                }, 1000); 
+            }
+
+            // --- 5. COMPRA FINAL ---
+            async function confirmarCompra() {
+                const ticketId = document.getElementById("ticket_bloqueado").innerText;
+                const usuarioId = document.getElementById("input_usuario").value;
+                
+                const resp = await fetch('/confirmar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ticket_id: parseInt(ticketId), usuario_id: parseInt(usuarioId) })
+                });
+                const data = await resp.json();
+                
+                if(resp.ok) {
+                    clearInterval(intervaloReloj); 
+                    document.getElementById("zona-temporizador").style.display = "none";
+                    document.getElementById("respuesta").innerText = "¡FELICIDADES! Compra confirmada.";
+                    alert("¡Compra Exitosa!");
+                    cargarReservas();
+                } else {
+                    alert(data.error);
+                }
+            }
+
+            // --- 6. PANEL ADMIN MEJORADO ---
+            async function cargarReservas() {
+                const respuestaDiv = document.getElementById("respuesta");
+                const lista = document.getElementById("lista-reservas");
+                lista.innerHTML = "Buscando reservas en la base de datos...";
+                
+                try {
+                    const resp = await fetch('/reservas');
+                    const data = await resp.json();
+                    
+                    lista.innerHTML = "";
+                    
+                    if (data.length === 0) {
+                        lista.innerHTML = "<p>No hay ninguna reserva activa ni confirmada.</p>";
+                        respuestaDiv.innerText = "Base de datos consultada: 0 reservas.";
+                        return;
+                    }
+                    
+                    data.forEach(r => {
+                        // Pintamos de verde si está confirmado, o de amarillo si solo está bloqueado (30s)
+                        const colorFondo = r.estado === 'confirmado' ? '#d4edda' : '#fff3cd'; 
+                        const colorBorde = r.estado === 'confirmado' ? '#c3e6cb' : '#ffeeba'; 
+                        
+                        lista.innerHTML += `
+                        <div class="ticket-item" style="background: ${colorFondo}; border-color: ${colorBorde};">
+                            <b>Ticket #${r.ticket_id}</b> | 👤 Usuario: ${r.usuario_nombre} <br>
+                            🎪 Evento: ${r.evento_nombre} <br>
+                            📌 Estado: <b style="text-transform: uppercase;">${r.estado}</b>
+                            
+                            <button class="btn-eliminar" onclick="liberarAdmin(${r.ticket_id})">
+                                🗑️ Eliminar / Liberar Ticket
+                            </button>
+                        </div>`;
+                    });
+                    respuestaDiv.innerText = "Lista de reservas totales actualizada.";
+                } catch (error) {
+                    lista.innerHTML = "<p style='color:red;'>Error al cargar las reservas.</p>";
+                    respuestaDiv.innerText = "Error Admin: " + error;
+                }
+            }
+
+            // Lógica para el botón de Eliminar
+            async function liberarAdmin(ticketId) {
+                const respuestaDiv = document.getElementById("respuesta");
+                respuestaDiv.innerText = "Liberando ticket " + ticketId + " a la fuerza...";
+                
+                try {
+                    const resp = await fetch('/reservas/' + ticketId, { method: 'DELETE' });
+                    const data = await resp.json();
+                    
+                    respuestaDiv.innerText = JSON.stringify(data, null, 2);
+                    
+                    // Refrescamos la tabla para que el ticket desaparezca visualmente
+                    cargarReservas();
+                    
+                    // Si justo estabas viendo los tickets, limpiamos para no descuadrar la vista
+                    document.getElementById("lista-tickets").innerHTML = ""; 
+                } catch (error) {
+                    respuestaDiv.innerText = "Error al liberar: " + error;
+                }
+            }
+        </script>
+    </body>
+    </html>
