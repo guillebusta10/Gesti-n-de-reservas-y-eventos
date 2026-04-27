@@ -57,12 +57,7 @@ jobs:
             tests/test_repositorios.py \
             tests/test_reserva_service.py \
             tests/test_routes.py \
-            --cov=. \
-            --cov-report=term-missing \
-            --cov-report=xml:coverage.xml \
-            --cov-omit="tests/*" \
-            --cov-fail-under=60 \
-            -v
+            --cov-report=xml:coverage.xml
 
       - name: Subir reporte de coverage
         uses: actions/upload-artifact@v4

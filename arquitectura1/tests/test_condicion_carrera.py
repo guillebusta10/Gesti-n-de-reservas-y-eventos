@@ -17,6 +17,8 @@ import sys
 import os
 import threading
 
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from repositories import ticket_repo
@@ -48,6 +50,7 @@ def _resetear_ticket(ticket_id: int) -> None:
 
 
 # ─── Escenario 1: código ACTUAL (sin protección) ──────────────────────────────
+@pytest.mark.xfail(reason="Demuestra la race condition intencionalmente; el assert falla cuando el bug existe")
 def test_race_condition_sin_proteccion():
     """
     DEMUESTRA la condición de carrera en bloquear() actual.
