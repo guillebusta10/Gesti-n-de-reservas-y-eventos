@@ -1,0 +1,72 @@
+name: CI – Tests y Coverage
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    name: Ejecutar tests con coverage
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: eventos_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: eventos_db
+      DB_USER: postgres
+      DB_PASS: postgres
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Instalar dependencias
+        run: pip install -r arquitectura1/requirements.txt
+
+      - name: Inicializar base de datos
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d eventos_db -f arquitectura1/init.sql
+
+      - name: Ejecutar tests con reporte de coverage
+        working-directory: arquitectura1
+        run: |
+          python -m pytest \
+            tests/test_repositorios.py \
+            tests/test_reserva_service.py \
+            tests/test_routes.py \
+            --cov=. \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --cov-omit="tests/*" \
+            --cov-fail-under=60 \
+            -v
+
+      - name: Subir reporte de coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: arquitectura1/coverage.xml
