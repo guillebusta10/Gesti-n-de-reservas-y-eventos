@@ -1,164 +1,180 @@
-"""
-Pruebas unitarias para los endpoints HTTP de app.py
+﻿"""
+Tests de integracion para las rutas HTTP de app.py
+Requiere base de datos activa (docker-compose up -d).
 
-Se mockean los repositorios y servicios para no necesitar base de datos.
+Tickets asignados a estos tests: 21 y 22 (evento 3).
 """
 import sys
 import os
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import json
-from unittest.mock import patch
 import pytest
-from app import app
+import app as flask_app
+
+# Tickets de evento 3 reservados para este archivo
+TICKET_R1 = 21
+TICKET_R2 = 22
+USUARIO_ID = 1
+EVENTO_ID  = 3
 
 
 @pytest.fixture
 def client():
-    app.config["TESTING"] = True
-    with app.test_client() as c:
+    flask_app.app.config["TESTING"] = True
+    with flask_app.app.test_client() as c:
         yield c
 
 
-# ─── GET /eventos ────────────────────────────────────────────────────────────
+@pytest.fixture(autouse=True)
+def limpiar(resetear):
+    resetear(TICKET_R1, TICKET_R2)
+    yield
+    resetear(TICKET_R1, TICKET_R2)
+
+
+# --- GET / ---------------------------------------------------------------
+
+class TestIndex:
+
+    def test_pagina_principal_responde(self, client):
+        response = client.get("/")
+        assert response.status_code == 200
+
+
+# --- GET /eventos --------------------------------------------------------
 
 class TestObtenerEventos:
 
-    @patch("app.evento_repo.obtener_todos")
-    def test_retorna_lista_de_eventos(self, mock_repo, client):
-        mock_repo.return_value = [
-            {"id": 1, "nombre": "Concierto de Rock", "fecha": "2026-05-10", "lugar": "Estadio Nacional"},
-            {"id": 2, "nombre": "Festival de Jazz",  "fecha": "2026-06-15", "lugar": "Parque Central"},
-        ]
-
+    def test_retorna_lista_de_eventos(self, client):
         response = client.get("/eventos")
-
         assert response.status_code == 200
         data = response.get_json()
-        assert len(data) == 2
-        assert data[0]["nombre"] == "Concierto de Rock"
+        assert isinstance(data, list)
+        assert len(data) >= 1
 
-    @patch("app.evento_repo.obtener_todos")
-    def test_retorna_500_si_falla_repo(self, mock_repo, client):
-        mock_repo.side_effect = Exception("Error de BD")
-
+    def test_cada_evento_tiene_campos_esperados(self, client):
         response = client.get("/eventos")
+        evento = response.get_json()[0]
+        assert "id" in evento
+        assert "nombre" in evento
 
-        assert response.status_code == 500
-        assert "error" in response.get_json()
 
-
-# ─── GET /eventos/<id>/tickets ───────────────────────────────────────────────
+# --- GET /eventos/<id>/tickets -------------------------------------------
 
 class TestObtenerTickets:
 
-    @patch("app.ticket_repo.obtener_disponibles")
-    def test_retorna_tickets_disponibles(self, mock_repo, client):
-        mock_repo.return_value = [{"ticket_id": 1}, {"ticket_id": 2}]
-
-        response = client.get("/eventos/1/tickets")
-
+    def test_retorna_tickets_de_evento_existente(self, client):
+        response = client.get(f"/eventos/{EVENTO_ID}/tickets")
         assert response.status_code == 200
         data = response.get_json()
-        assert len(data) == 2
-        mock_repo.assert_called_once_with(1)
+        assert isinstance(data, list)
+        assert len(data) >= 1
 
-    @patch("app.ticket_repo.obtener_disponibles")
-    def test_retorna_500_si_falla_repo(self, mock_repo, client):
-        mock_repo.side_effect = Exception("Error")
-
-        response = client.get("/eventos/1/tickets")
-
-        assert response.status_code == 500
+    def test_evento_inexistente_retorna_lista_vacia(self, client):
+        response = client.get("/eventos/9999/tickets")
+        assert response.status_code == 200
+        assert response.get_json() == []
 
 
-# ─── GET /reservas ───────────────────────────────────────────────────────────
+# --- GET /reservas -------------------------------------------------------
 
 class TestObtenerReservas:
 
-    @patch("app.ticket_repo.obtener_reservas_activas")
-    def test_retorna_reservas_activas(self, mock_repo, client):
-        mock_repo.return_value = [
-            {"ticket_id": 3, "usuario_nombre": "Ana García", "evento_nombre": "Concierto", "estado": "reservado"}
-        ]
-
+    def test_retorna_200_con_lista(self, client):
         response = client.get("/reservas")
-
         assert response.status_code == 200
-        data = response.get_json()
-        assert data[0]["estado"] == "reservado"
+        assert isinstance(response.get_json(), list)
+
+    def test_reserva_reciente_aparece_en_listado(self, client):
+        client.post(
+            "/reservar",
+            data=json.dumps({"ticket_id": TICKET_R1, "usuario_id": USUARIO_ID}),
+            content_type="application/json"
+        )
+        response = client.get("/reservas")
+        ids = [r["ticket_id"] for r in response.get_json()]
+        assert TICKET_R1 in ids
 
 
-# ─── POST /reservar ──────────────────────────────────────────────────────────
+# --- POST /reservar ------------------------------------------------------
 
 class TestReservarTicket:
 
-    @patch("app.reserva_service.reservar")
-    def test_reservar_exitoso(self, mock_service, client):
-        mock_service.return_value = {"ok": True, "ticket_id": 5}
-
-        response = client.post("/reservar",
-                               data=json.dumps({"ticket_id": 5, "usuario_id": 1}),
-                               content_type="application/json")
-
+    def test_reservar_exitoso(self, client):
+        response = client.post(
+            "/reservar",
+            data=json.dumps({"ticket_id": TICKET_R1, "usuario_id": USUARIO_ID}),
+            content_type="application/json"
+        )
         assert response.status_code == 200
-        assert response.get_json()["ticket_id"] == 5
+        assert response.get_json()["ticket_id"] == TICKET_R1
 
-    @patch("app.reserva_service.reservar")
-    def test_reservar_ticket_ya_tomado(self, mock_service, client):
-        mock_service.return_value = {"ok": False, "error": "El ticket acaba de ser tomado"}
-
-        response = client.post("/reservar",
-                               data=json.dumps({"ticket_id": 5, "usuario_id": 1}),
-                               content_type="application/json")
-
+    def test_reservar_ticket_ya_tomado_retorna_409(self, client):
+        client.post(
+            "/reservar",
+            data=json.dumps({"ticket_id": TICKET_R1, "usuario_id": 1}),
+            content_type="application/json"
+        )
+        response = client.post(
+            "/reservar",
+            data=json.dumps({"ticket_id": TICKET_R1, "usuario_id": 2}),
+            content_type="application/json"
+        )
         assert response.status_code == 409
         assert "error" in response.get_json()
 
-
-# ─── POST /confirmar ─────────────────────────────────────────────────────────
-
-class TestConfirmarReserva:
-
-    @patch("app.reserva_service.confirmar")
-    def test_confirmar_exitoso(self, mock_service, client):
-        mock_service.return_value = {"ok": True}
-
-        response = client.post("/confirmar",
-                               data=json.dumps({"ticket_id": 5, "usuario_id": 1}),
-                               content_type="application/json")
-
-        assert response.status_code == 200
-        assert "confirmada" in response.get_json()["mensaje"].lower()
-
-    @patch("app.reserva_service.confirmar")
-    def test_confirmar_tiempo_expirado(self, mock_service, client):
-        mock_service.return_value = {"ok": False, "error": "El tiempo de 30s expiró"}
-
-        response = client.post("/confirmar",
-                               data=json.dumps({"ticket_id": 5, "usuario_id": 1}),
-                               content_type="application/json")
-
+    def test_reservar_sin_datos_retorna_400(self, client):
+        response = client.post(
+            "/reservar",
+            data=json.dumps({}),
+            content_type="application/json"
+        )
         assert response.status_code == 400
 
 
-# ─── DELETE /reservas/<id> ───────────────────────────────────────────────────
+# --- POST /confirmar -----------------------------------------------------
+
+class TestConfirmarReserva:
+
+    def test_confirmar_exitoso(self, client):
+        client.post(
+            "/reservar",
+            data=json.dumps({"ticket_id": TICKET_R1, "usuario_id": USUARIO_ID}),
+            content_type="application/json"
+        )
+        response = client.post(
+            "/confirmar",
+            data=json.dumps({"ticket_id": TICKET_R1, "usuario_id": USUARIO_ID}),
+            content_type="application/json"
+        )
+        assert response.status_code == 200
+        assert "confirmada" in response.get_json()["mensaje"].lower()
+
+    def test_confirmar_sin_reserva_retorna_400(self, client):
+        response = client.post(
+            "/confirmar",
+            data=json.dumps({"ticket_id": TICKET_R1, "usuario_id": USUARIO_ID}),
+            content_type="application/json"
+        )
+        assert response.status_code == 400
+
+
+# --- DELETE /reservas/<id> -----------------------------------------------
 
 class TestEliminarReserva:
 
-    @patch("app.reserva_service.cancelar")
-    def test_cancelar_exitoso(self, mock_service, client):
-        mock_service.return_value = {"ok": True, "ticket_id": 3}
-
-        response = client.delete("/reservas/3")
-
+    def test_cancelar_exitoso(self, client):
+        client.post(
+            "/reservar",
+            data=json.dumps({"ticket_id": TICKET_R1, "usuario_id": USUARIO_ID}),
+            content_type="application/json"
+        )
+        response = client.delete(f"/reservas/{TICKET_R1}")
         assert response.status_code == 200
-        assert "3" in response.get_json()["mensaje"]
+        assert str(TICKET_R1) in response.get_json()["mensaje"]
 
-    @patch("app.reserva_service.cancelar")
-    def test_cancelar_no_encontrado(self, mock_service, client):
-        mock_service.return_value = {"ok": False, "error": "No se encontró la reserva"}
-
-        response = client.delete("/reservas/99")
-
+    def test_cancelar_ticket_inexistente_retorna_404(self, client):
+        response = client.delete("/reservas/9999")
         assert response.status_code == 404

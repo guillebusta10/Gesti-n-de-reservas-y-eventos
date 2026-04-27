@@ -48,8 +48,12 @@ def obtener_reservas():
 @app.route("/reservar", methods=["POST"])
 def reservar_ticket():
     try:
-        datos = request.get_json()
-        resultado = reserva_service.reservar(datos.get("ticket_id"), datos.get("usuario_id"))
+        datos = request.get_json() or {}
+        ticket_id = datos.get("ticket_id")
+        usuario_id = datos.get("usuario_id")
+        if ticket_id is None or usuario_id is None:
+            return jsonify({"error": "Se requieren ticket_id y usuario_id"}), 400
+        resultado = reserva_service.reservar(ticket_id, usuario_id)
         if resultado["ok"]:
             return jsonify({"mensaje": "Ticket bloqueado por 30 segundos", "ticket_id": resultado["ticket_id"]}), 200
         return jsonify({"error": resultado["error"]}), 409

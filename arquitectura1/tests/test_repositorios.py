@@ -1,166 +1,163 @@
-"""
-Pruebas unitarias para repositories/evento_repo.py y ticket_repo.py
+﻿"""
+Tests de integracion para repositories/evento_repo.py y ticket_repo.py
+Requiere base de datos activa (docker-compose up -d).
 
-Se mockea obtener_conexion para no necesitar base de datos real.
+Tickets asignados a estos tests: 1 y 2 (evento 1).
 """
 import sys
 import os
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from unittest.mock import patch, MagicMock
+import pytest
+from db import obtener_conexion
 from repositories import evento_repo, ticket_repo
 
-
-def crear_mock_conexion(filas=None, fetchone=None):
-    """Helper que devuelve un mock de conexión con cursor configurado."""
-    mock_cursor = MagicMock()
-    mock_cursor.fetchall.return_value = filas or []
-    mock_cursor.fetchone.return_value = fetchone
-
-    mock_conexion = MagicMock()
-    mock_conexion.cursor.return_value = mock_cursor
-
-    return mock_conexion, mock_cursor
+# Tickets de evento 1 reservados para este archivo de tests
+TICKET_A = 1
+TICKET_B = 2
+USUARIO_ID = 1
 
 
-# ─── evento_repo ─────────────────────────────────────────────────────────────
+@pytest.fixture(autouse=True)
+def limpiar(resetear):
+    """Restablece los tickets antes y despues de cada test."""
+    resetear(TICKET_A, TICKET_B)
+    yield
+    resetear(TICKET_A, TICKET_B)
+
+
+# --- evento_repo.obtener_todos -------------------------------------------
 
 class TestEventoRepo:
 
-    @patch("repositories.evento_repo.obtener_conexion")
-    def test_obtener_todos_devuelve_lista(self, mock_conn_fn):
-        filas = [
-            (1, "Concierto de Rock", "2026-05-10", "Estadio Nacional"),
-            (2, "Festival de Jazz",  "2026-06-15", "Parque Central"),
-        ]
-        mock_conexion, _ = crear_mock_conexion(filas=filas)
-        mock_conn_fn.return_value = mock_conexion
-
+    def test_retorna_lista_de_eventos(self):
         resultado = evento_repo.obtener_todos()
+        assert isinstance(resultado, list)
+        assert len(resultado) >= 1
 
-        assert len(resultado) == 2
-        assert resultado[0]["id"] == 1
-        assert resultado[0]["nombre"] == "Concierto de Rock"
-        assert resultado[1]["lugar"] == "Parque Central"
-
-    @patch("repositories.evento_repo.obtener_conexion")
-    def test_obtener_todos_lista_vacia(self, mock_conn_fn):
-        mock_conexion, _ = crear_mock_conexion(filas=[])
-        mock_conn_fn.return_value = mock_conexion
-
+    def test_cada_evento_tiene_campos_esperados(self):
         resultado = evento_repo.obtener_todos()
-
-        assert resultado == []
-
-    @patch("repositories.evento_repo.obtener_conexion")
-    def test_obtener_todos_cierra_conexion(self, mock_conn_fn):
-        mock_conexion, _ = crear_mock_conexion(filas=[])
-        mock_conn_fn.return_value = mock_conexion
-
-        evento_repo.obtener_todos()
-
-        mock_conexion.close.assert_called_once()
+        evento = resultado[0]
+        assert "id" in evento
+        assert "nombre" in evento
+        assert "fecha" in evento
+        assert "lugar" in evento
 
 
-# ─── ticket_repo.obtener_disponibles ─────────────────────────────────────────
+# --- ticket_repo.obtener_disponibles -------------------------------------
 
 class TestObtenerDisponibles:
 
-    @patch("repositories.ticket_repo.obtener_conexion")
-    def test_retorna_tickets(self, mock_conn_fn):
-        mock_conexion, _ = crear_mock_conexion(filas=[(1,), (2,), (3,)])
-        mock_conn_fn.return_value = mock_conexion
-
+    def test_retorna_tickets_de_evento_existente(self):
         resultado = ticket_repo.obtener_disponibles(evento_id=1)
+        assert len(resultado) >= 1
+        assert "ticket_id" in resultado[0]
 
-        assert len(resultado) == 3
-        assert resultado[0]["ticket_id"] == 1
-
-    @patch("repositories.ticket_repo.obtener_conexion")
-    def test_sin_tickets_disponibles(self, mock_conn_fn):
-        mock_conexion, _ = crear_mock_conexion(filas=[])
-        mock_conn_fn.return_value = mock_conexion
-
-        resultado = ticket_repo.obtener_disponibles(evento_id=99)
-
+    def test_evento_inexistente_retorna_lista_vacia(self):
+        resultado = ticket_repo.obtener_disponibles(evento_id=9999)
         assert resultado == []
 
+    def test_ticket_confirmado_no_aparece_en_disponibles(self):
+        # obtener_disponibles muestra 'disponible' y 'reservado', pero no 'confirmado'
+        ticket_repo.bloquear(TICKET_A, USUARIO_ID)
+        ticket_repo.confirmar(TICKET_A, USUARIO_ID)
+        disponibles = ticket_repo.obtener_disponibles(evento_id=1)
+        ids = [t["ticket_id"] for t in disponibles]
+        assert TICKET_A not in ids
 
-# ─── ticket_repo.bloquear ────────────────────────────────────────────────────
+
+# --- ticket_repo.bloquear ------------------------------------------------
 
 class TestBloquear:
 
-    @patch("repositories.ticket_repo.obtener_conexion")
-    def test_bloquear_exitoso(self, mock_conn_fn):
-        mock_conexion, _ = crear_mock_conexion(fetchone=(5,))
-        mock_conn_fn.return_value = mock_conexion
+    def test_bloquear_retorna_id_del_ticket(self):
+        resultado = ticket_repo.bloquear(TICKET_A, USUARIO_ID)
+        assert resultado is not None
+        assert resultado[0] == TICKET_A
 
-        resultado = ticket_repo.bloquear(ticket_id=5, usuario_id=1)
+    def test_estado_cambia_a_reservado_en_bd(self):
+        ticket_repo.bloquear(TICKET_A, USUARIO_ID)
 
-        assert resultado == (5,)
-        mock_conexion.commit.assert_called_once()
+        conexion = obtener_conexion()
+        cursor = conexion.cursor()
+        cursor.execute("SELECT estado FROM tickets WHERE id=%s", (TICKET_A,))
+        estado = cursor.fetchone()[0]
+        conexion.close()
 
-    @patch("repositories.ticket_repo.obtener_conexion")
-    def test_bloquear_ticket_no_disponible(self, mock_conn_fn):
-        mock_conexion, _ = crear_mock_conexion(fetchone=None)
-        mock_conn_fn.return_value = mock_conexion
+        assert estado == "reservado"
 
-        resultado = ticket_repo.bloquear(ticket_id=5, usuario_id=1)
+    def test_usuario_id_queda_registrado_en_bd(self):
+        ticket_repo.bloquear(TICKET_A, USUARIO_ID)
 
-        assert resultado is None
+        conexion = obtener_conexion()
+        cursor = conexion.cursor()
+        cursor.execute("SELECT usuario_id FROM tickets WHERE id=%s", (TICKET_A,))
+        uid = cursor.fetchone()[0]
+        conexion.close()
+
+        assert uid == USUARIO_ID
 
 
-# ─── ticket_repo.confirmar ───────────────────────────────────────────────────
+# --- ticket_repo.confirmar -----------------------------------------------
 
 class TestConfirmarRepo:
 
-    @patch("repositories.ticket_repo.obtener_conexion")
-    def test_confirmar_exitoso(self, mock_conn_fn):
-        mock_conexion = MagicMock()
-        mock_cursor = MagicMock()
-        mock_conexion.cursor.return_value = mock_cursor
-        # Primera llamada (SELECT): devuelve el usuario_id
-        # Segunda llamada (UPDATE RETURNING): devuelve el ticket
-        mock_cursor.fetchone.side_effect = [(1,), (10,)]
-        mock_conn_fn.return_value = mock_conexion
+    def test_confirmar_exitoso(self):
+        ticket_repo.bloquear(TICKET_A, USUARIO_ID)
+        resultado = ticket_repo.confirmar(TICKET_A, USUARIO_ID)
+        assert resultado is not None
+        assert resultado[0] == TICKET_A
 
-        resultado = ticket_repo.confirmar(ticket_id=10, usuario_id=1)
+    def test_estado_cambia_a_confirmado_en_bd(self):
+        ticket_repo.bloquear(TICKET_A, USUARIO_ID)
+        ticket_repo.confirmar(TICKET_A, USUARIO_ID)
 
-        assert resultado == (10,)
-        mock_conexion.commit.assert_called_once()
+        conexion = obtener_conexion()
+        cursor = conexion.cursor()
+        cursor.execute("SELECT estado FROM tickets WHERE id=%s", (TICKET_A,))
+        estado = cursor.fetchone()[0]
+        conexion.close()
 
-    @patch("repositories.ticket_repo.obtener_conexion")
-    def test_confirmar_reserva_no_encontrada(self, mock_conn_fn):
-        mock_conexion = MagicMock()
-        mock_cursor = MagicMock()
-        mock_conexion.cursor.return_value = mock_cursor
-        mock_cursor.fetchone.return_value = None  # no hay reserva activa
-        mock_conn_fn.return_value = mock_conexion
+        assert estado == "confirmado"
 
-        resultado = ticket_repo.confirmar(ticket_id=10, usuario_id=1)
+    def test_confirmar_sin_reserva_previa_retorna_none(self):
+        # Ticket esta disponible, no reservado
+        resultado = ticket_repo.confirmar(TICKET_A, USUARIO_ID)
+        assert resultado is None
 
+    def test_confirmar_usuario_incorrecto_retorna_none(self):
+        ticket_repo.bloquear(TICKET_A, USUARIO_ID)
+        resultado = ticket_repo.confirmar(TICKET_A, usuario_id=99)
         assert resultado is None
 
 
-# ─── ticket_repo.liberar ─────────────────────────────────────────────────────
+# --- ticket_repo.liberar -------------------------------------------------
 
 class TestLiberar:
 
-    @patch("repositories.ticket_repo.obtener_conexion")
-    def test_liberar_exitoso(self, mock_conn_fn):
-        mock_conexion, _ = crear_mock_conexion(fetchone=(3,))
-        mock_conn_fn.return_value = mock_conexion
+    def test_liberar_retorna_id_del_ticket(self):
+        ticket_repo.bloquear(TICKET_A, USUARIO_ID)
+        resultado = ticket_repo.liberar(TICKET_A)
+        assert resultado is not None
+        assert resultado[0] == TICKET_A
 
-        resultado = ticket_repo.liberar(ticket_id=3)
+    def test_estado_vuelve_a_disponible_en_bd(self):
+        ticket_repo.bloquear(TICKET_A, USUARIO_ID)
+        ticket_repo.liberar(TICKET_A)
 
-        assert resultado == (3,)
-        mock_conexion.commit.assert_called_once()
+        conexion = obtener_conexion()
+        cursor = conexion.cursor()
+        cursor.execute("SELECT estado FROM tickets WHERE id=%s", (TICKET_A,))
+        estado = cursor.fetchone()[0]
+        conexion.close()
 
-    @patch("repositories.ticket_repo.obtener_conexion")
-    def test_liberar_ticket_no_existente(self, mock_conn_fn):
-        mock_conexion, _ = crear_mock_conexion(fetchone=None)
-        mock_conn_fn.return_value = mock_conexion
+        assert estado == "disponible"
 
-        resultado = ticket_repo.liberar(ticket_id=99)
+    def test_ticket_vuelve_a_aparecer_en_disponibles(self):
+        ticket_repo.bloquear(TICKET_A, USUARIO_ID)
+        ticket_repo.liberar(TICKET_A)
 
-        assert resultado is None
+        disponibles = ticket_repo.obtener_disponibles(evento_id=1)
+        ids = [t["ticket_id"] for t in disponibles]
+        assert TICKET_A in ids
