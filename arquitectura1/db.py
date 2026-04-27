@@ -1,5 +1,5 @@
 import psycopg
-from config import DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS
+from config import DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASS, DB_SSLMODE
 
 
 def obtener_conexion():
@@ -9,5 +9,5 @@ def obtener_conexion():
         dbname=DB_NAME,
         user=DB_USER,
         password=DB_PASS,
-        sslmode="require"
+        sslmode=DB_SSLMODE
     )

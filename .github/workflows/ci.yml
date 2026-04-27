@@ -32,6 +32,7 @@ jobs:
       DB_NAME: eventos_db
       DB_USER: postgres
       DB_PASS: postgres
+      DB_SSLMODE: disable
 
     steps:
       - name: Checkout código
