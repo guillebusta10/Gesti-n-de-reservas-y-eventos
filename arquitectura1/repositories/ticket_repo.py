@@ -40,7 +40,7 @@ def bloquear(ticket_id, usuario_id):
         SET estado = 'reservado',
             usuario_id = %s,
             fecha_expiracion = NOW() + INTERVAL '30 seconds'
-        WHERE id = %s
+        WHERE id = %s AND estado = 'disponible'
         RETURNING id;
     """
     cursor.execute(query, (usuario_id, ticket_id))
