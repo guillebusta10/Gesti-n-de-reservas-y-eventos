@@ -34,13 +34,12 @@ class TestReservar:
         assert resultado["ok"] is True
         assert resultado["ticket_id"] == TICKET_SVC
 
-    def test_reservar_ticket_ya_tomado_falla(self):
-        # Primer usuario reserva
+    def test_multiples_usuarios_pueden_reservar_mismo_ticket(self):
+        # Con la nueva lógica, varios usuarios pueden reservar el mismo ticket;
+        # la competencia se resuelve en confirmar().
         reserva_service.reservar(TICKET_SVC, USUARIO_A)
-        # Segundo usuario intenta el mismo ticket
         resultado = reserva_service.reservar(TICKET_SVC, USUARIO_B)
-        assert resultado["ok"] is False
-        assert "error" in resultado
+        assert resultado["ok"] is True
 
     def test_reservar_retorna_error_si_ticket_no_existe(self):
         resultado = reserva_service.reservar(ticket_id=9999, usuario_id=USUARIO_A)
@@ -61,9 +60,11 @@ class TestConfirmar:
         assert resultado["ok"] is False
         assert "error" in resultado
 
-    def test_confirmar_usuario_incorrecto_falla(self):
+    def test_solo_primer_confirmador_gana(self):
+        # El primer usuario que confirma gana; el segundo recibe error.
         reserva_service.reservar(TICKET_SVC, USUARIO_A)
-        resultado = reserva_service.confirmar(TICKET_SVC, usuario_id=99)
+        reserva_service.confirmar(TICKET_SVC, USUARIO_A)
+        resultado = reserva_service.confirmar(TICKET_SVC, USUARIO_B)
         assert resultado["ok"] is False
         assert "error" in resultado
 

@@ -111,18 +111,25 @@ class TestReservarTicket:
         assert response.status_code == 200
         assert response.get_json()["ticket_id"] == TICKET_R1
 
-    def test_reservar_ticket_ya_tomado_retorna_409(self, client):
+    def test_confirmar_ticket_ya_confirmado_retorna_400(self, client):
+        # Con la nueva lógica, reservar() siempre es exitoso para tickets válidos.
+        # La competencia se resuelve en confirmar(): el segundo intento retorna 400.
         client.post(
             "/reservar",
             data=json.dumps({"ticket_id": TICKET_R1, "usuario_id": 1}),
             content_type="application/json"
         )
+        client.post(
+            "/confirmar",
+            data=json.dumps({"ticket_id": TICKET_R1, "usuario_id": 1}),
+            content_type="application/json"
+        )
         response = client.post(
-            "/reservar",
+            "/confirmar",
             data=json.dumps({"ticket_id": TICKET_R1, "usuario_id": 2}),
             content_type="application/json"
         )
-        assert response.status_code == 409
+        assert response.status_code == 400
         assert "error" in response.get_json()
 
     def test_reservar_sin_datos_retorna_400(self, client):

@@ -72,9 +72,9 @@ class TestObtenerDisponibles:
 class TestBloquear:
 
     def test_bloquear_retorna_id_del_ticket(self):
+        # bloquear() ahora retorna el id de reservas_temporales, no el ticket_id
         resultado = ticket_repo.bloquear(TICKET_A, USUARIO_ID)
         assert resultado is not None
-        assert resultado[0] == TICKET_A
 
     def test_estado_cambia_a_reservado_en_bd(self):
         ticket_repo.bloquear(TICKET_A, USUARIO_ID)
@@ -87,7 +87,8 @@ class TestBloquear:
 
         assert estado == "reservado"
 
-    def test_usuario_id_queda_registrado_en_bd(self):
+    def test_usuario_id_nulo_tras_bloquear(self):
+        # Con la nueva lógica, usuario_id se asigna al CONFIRMAR, no al bloquear
         ticket_repo.bloquear(TICKET_A, USUARIO_ID)
 
         conexion = obtener_conexion()
@@ -96,7 +97,7 @@ class TestBloquear:
         uid = cursor.fetchone()[0]
         conexion.close()
 
-        assert uid == USUARIO_ID
+        assert uid is None
 
 
 # --- ticket_repo.confirmar -----------------------------------------------
@@ -126,9 +127,11 @@ class TestConfirmarRepo:
         resultado = ticket_repo.confirmar(TICKET_A, USUARIO_ID)
         assert resultado is None
 
-    def test_confirmar_usuario_incorrecto_retorna_none(self):
+    def test_confirmar_segundo_intento_retorna_none(self):
+        # Solo el primer confirmar gana; el segundo (ticket ya 'confirmado') retorna None
         ticket_repo.bloquear(TICKET_A, USUARIO_ID)
-        resultado = ticket_repo.confirmar(TICKET_A, usuario_id=99)
+        ticket_repo.confirmar(TICKET_A, USUARIO_ID)
+        resultado = ticket_repo.confirmar(TICKET_A, USUARIO_ID)
         assert resultado is None
 
 
