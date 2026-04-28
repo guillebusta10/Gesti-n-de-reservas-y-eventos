@@ -1,3 +1,4 @@
+
 -- Tabla de usuarios
 CREATE TABLE IF NOT EXISTS usuarios (
     id   SERIAL PRIMARY KEY,
@@ -20,6 +21,12 @@ CREATE TABLE IF NOT EXISTS tickets (
     estado           VARCHAR(20) NOT NULL DEFAULT 'disponible'
                          CHECK (estado IN ('disponible', 'reservado', 'confirmado')),
     fecha_expiracion TIMESTAMP
+);
+CREATE TABLE reservas_temporales (
+    id SERIAL PRIMARY KEY,
+    ticket_id INTEGER REFERENCES tickets(id),
+    usuario_id INTEGER REFERENCES usuarios(id),
+    fecha_expiracion TIMESTAMP DEFAULT (NOW() + INTERVAL '30 seconds')
 );
 
 -- Datos de prueba: usuarios
