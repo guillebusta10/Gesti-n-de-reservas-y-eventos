@@ -58,6 +58,7 @@ jobs:
             tests/test_repositorios.py \
             tests/test_reserva_service.py \
             tests/test_routes.py \
+            tests/test_condicion_carrera.py \
             --cov-report=xml:coverage.xml
 
       - name: Subir reporte de coverage

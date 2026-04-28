@@ -1,7 +1,10 @@
 """
 Test de condición de carrera
 ============================
-Simula N usuarios que intentan confirmar el MISMO ticket exactamente al mismo tiempo.
+Con la arquitectura de reservas_temporales:
+- reservar()  → TODOS los usuarios insertan en reservas_temporales (ok=True para todos)
+- confirmar() → solo el PRIMERO que actualiza tickets a 'confirmado' gana (AND estado='reservado')
+
 Verifica que solo 1 usuario puede confirmar; el resto recibe ok=False.
 
 Requiere que la base de datos esté corriendo (docker-compose up).
@@ -30,10 +33,11 @@ N_USUARIOS = 8   # Hilos simultáneos (usuarios concurrentes)
 
 # ─── Helper: resetear ticket a 'disponible' antes de cada prueba ──────────────
 def _resetear_ticket(ticket_id: int) -> None:
-    """Devuelve el ticket a estado 'disponible' sin importar su estado actual."""
+    """Devuelve el ticket a 'disponible' y limpia reservas_temporales."""
     from db import obtener_conexion
     conexion = obtener_conexion()
     cursor = conexion.cursor()
+    cursor.execute("DELETE FROM reservas_temporales WHERE ticket_id = %s;", (ticket_id,))
     cursor.execute(
         """
         UPDATE tickets
@@ -48,52 +52,40 @@ def _resetear_ticket(ticket_id: int) -> None:
     conexion.close()
 
 
-# ─── Escenario: código CORREGIDO (con protección de estado) ──────────────────
+# ─── Escenario: múltiples reservas → solo 1 confirmación ─────────────────────
 def test_race_condition_con_proteccion():
     """
-    Verifica que agregando 'AND estado = disponible' al UPDATE se elimina la race condition.
+    Con la nueva arquitectura:
+    - Fase 1: TODOS los usuarios llaman a reservar() → todos obtienen ok=True
+      (se insertan en reservas_temporales; el ticket pasa a 'reservado')
+    - Fase 2: TODOS intentan confirmar() al mismo tiempo.
+      Solo el primero cuyo UPDATE encuentra estado='reservado' gana.
+      El resto recibe ok=False porque el ticket ya está 'confirmado'.
 
-    Se parchea temporalmente ticket_repo.bloquear con la versión segura.
-    Solo 1 usuario debe poder reservar; el resto recibe ok=False.
+    Verifica que exactamente 1 usuario confirma y los demás fallan.
     """
-    from db import obtener_conexion
-    from unittest.mock import patch
-
-    def bloquear_seguro(ticket_id: int, usuario_id: int):
-        """Versión protegida: comprueba el estado antes de reservar."""
-        conexion = obtener_conexion()
-        cursor = conexion.cursor()
-        cursor.execute(
-            """
-            UPDATE tickets
-            SET estado = 'reservado',
-                usuario_id = %s,
-                fecha_expiracion = NOW() + INTERVAL '30 seconds'
-            WHERE id = %s
-              AND estado = 'disponible'   -- ← protección contra race condition
-            RETURNING id;
-            """,
-            (usuario_id, ticket_id),
-        )
-        resultado = cursor.fetchone()
-        conexion.commit()
-        conexion.close()
-        return resultado
-
     _resetear_ticket(TICKET_ID)
 
+    # Usuarios válidos en la BD (IDs 1, 2, 3); se ciclan para N_USUARIOS hilos
+    usuario_ids = [(i % 3) + 1 for i in range(N_USUARIOS)]
+
+    # Fase 1: todos reservan — todos deben tener ok=True
+    for uid in usuario_ids:
+        res = reserva_service.reservar(TICKET_ID, uid)
+        assert res["ok"] is True, f"Usuario {uid} no pudo reservar: {res}"
+
+    # Fase 2: todos intentan confirmar al mismo tiempo
     resultados = []
     barrera    = threading.Barrier(N_USUARIOS)
 
-    def intentar_reservar(usuario_id: int) -> None:
+    def intentar_confirmar(usuario_id: int) -> None:
         barrera.wait()
-        with patch("services.reserva_service.ticket_repo.bloquear", bloquear_seguro):
-            res = reserva_service.reservar(TICKET_ID, usuario_id)
+        res = reserva_service.confirmar(TICKET_ID, usuario_id)
         resultados.append(res)
 
     hilos = [
-        threading.Thread(target=intentar_reservar, args=(uid,))
-        for uid in range(1, N_USUARIOS + 1)
+        threading.Thread(target=intentar_confirmar, args=(uid,))
+        for uid in usuario_ids
     ]
     for h in hilos:
         h.start()
@@ -104,30 +96,23 @@ def test_race_condition_con_proteccion():
     fallidos  = [r for r in resultados if not r["ok"]]
 
     print("\n" + "=" * 60)
-    print("  ESCENARIO: código corregido (con AND estado = 'disponible')")
+    print("  ESCENARIO: múltiples reservas → solo 1 confirmación")
     print("=" * 60)
-    print(f"  Usuarios concurrentes : {N_USUARIOS}")
-    print(f"  Reservas EXITOSAS     : {len(exitosos)}")
-    print(f"  Reservas fallidas     : {len(fallidos)}")
-    print("\n  ✅ Solo 1 usuario pudo reservar. Race condition eliminada.")
+    print(f"  Usuarios concurrentes  : {N_USUARIOS}")
+    print(f"  Confirmaciones EXITOSAS: {len(exitosos)}")
+    print(f"  Confirmaciones fallidas: {len(fallidos)}")
+    print("\n  ✅ Solo 1 usuario pudo confirmar. Race condition eliminada.")
     print("=" * 60)
 
     assert len(exitosos) == 1, (
-        f"Se esperaba exactamente 1 reserva exitosa, pero hubo {len(exitosos)}."
+        f"Se esperaba exactamente 1 confirmación exitosa, pero hubo {len(exitosos)}."
     )
     assert len(fallidos) == N_USUARIOS - 1
 
 
 # ─── Ejecución directa ────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    print("\n>>> Ejecutando prueba SIN protección (bug actual)...")
-    try:
-        test_race_condition_sin_proteccion()
-        print(">>> PASÓ (PostgreSQL serializó, no hubo doble reserva)")
-    except AssertionError as e:
-        print(f">>> FALLÓ → {e}")
-
-    print("\n>>> Ejecutando prueba CON protección (fix propuesto)...")
+    print("\n>>> Ejecutando prueba de race condition en confirmar()...")
     try:
         test_race_condition_con_proteccion()
         print(">>> PASÓ ✅")
