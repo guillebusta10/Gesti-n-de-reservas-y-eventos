@@ -1,7 +1,8 @@
 """
 Test de condición de carrera
 ============================
-Simula N usuarios que intentan reservar el MISMO ticket exactamente al mismo tiempo.
+Simula N usuarios que intentan confirmar el MISMO ticket exactamente al mismo tiempo.
+Verifica que solo 1 usuario puede confirmar; el resto recibe ok=False.
 
 Requiere que la base de datos esté corriendo (docker-compose up).
 
@@ -16,8 +17,6 @@ O directamente:
 import sys
 import os
 import threading
-
-import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -49,67 +48,7 @@ def _resetear_ticket(ticket_id: int) -> None:
     conexion.close()
 
 
-# ─── Escenario 1: código ACTUAL (sin protección) ──────────────────────────────
-@pytest.mark.xfail(reason="Demuestra la race condition intencionalmente; el assert falla cuando el bug existe")
-def test_race_condition_sin_proteccion():
-    """
-    DEMUESTRA la condición de carrera en bloquear() actual.
-
-    Sin 'AND estado = disponible' en el WHERE, el segundo hilo
-    sobrescribe la reserva del primero y TAMBIÉN devuelve éxito.
-    Resultado esperado si el bug existe: éxitos > 1.
-    """
-    _resetear_ticket(TICKET_ID)
-
-    resultados = []
-    errores    = []
-    barrera    = threading.Barrier(N_USUARIOS)  # todos arrancan al mismo tiempo
-
-    def intentar_reservar(usuario_id: int) -> None:
-        barrera.wait()  # sincronización: espera hasta que todos estén listos
-        try:
-            res = reserva_service.reservar(TICKET_ID, usuario_id)
-            resultados.append(res)
-        except Exception as exc:
-            errores.append(str(exc))
-
-    hilos = [
-        threading.Thread(target=intentar_reservar, args=(uid,))
-        for uid in range(1, N_USUARIOS + 1)
-    ]
-    for h in hilos:
-        h.start()
-    for h in hilos:
-        h.join()
-
-    exitosos = [r for r in resultados if r["ok"]]
-    fallidos  = [r for r in resultados if not r["ok"]]
-
-    print("\n" + "=" * 60)
-    print("  ESCENARIO: código sin protección (bug actual)")
-    print("=" * 60)
-    print(f"  Usuarios concurrentes : {N_USUARIOS}")
-    print(f"  Reservas EXITOSAS     : {len(exitosos)}")
-    print(f"  Reservas fallidas     : {len(fallidos)}")
-    print(f"  Errores de hilo       : {len(errores)}")
-
-    if len(exitosos) > 1:
-        print(
-            f"\n  ⚠️  RACE CONDITION DETECTADA: {len(exitosos)} usuarios "
-            "creen tener el mismo ticket."
-        )
-    else:
-        print("\n  ✅ Solo 1 usuario obtuvo el ticket (PostgreSQL serializó correctamente).")
-    print("=" * 60)
-
-    # Este assert falla si hay condición de carrera (que es lo que esperamos mostrar)
-    assert len(exitosos) == 1, (
-        f"Race condition detectada: {len(exitosos)} usuarios 'ganaron' el mismo ticket. "
-        "Falta 'AND estado = disponible' en bloquear()."
-    )
-
-
-# ─── Escenario 2: código CORREGIDO (con protección de estado) ─────────────────
+# ─── Escenario: código CORREGIDO (con protección de estado) ──────────────────
 def test_race_condition_con_proteccion():
     """
     Verifica que agregando 'AND estado = disponible' al UPDATE se elimina la race condition.
