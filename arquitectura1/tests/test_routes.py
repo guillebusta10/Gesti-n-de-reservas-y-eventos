@@ -138,7 +138,8 @@ class TestReservarTicket:
             data=json.dumps({}),
             content_type="application/json"
         )
-        assert response.status_code == 400
+        # APIFlask retorna 422 (Unprocessable Entity) cuando faltan campos requeridos del schema
+        assert response.status_code == 422
 
 
 # --- POST /confirmar -----------------------------------------------------

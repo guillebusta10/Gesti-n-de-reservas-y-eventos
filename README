@@ -82,6 +82,40 @@ python -m pytest tests/ -v -s
 
 > Nota: `test_condicion_carrera.py::test_race_condition_sin_proteccion` falla de forma esperada; su propósito es exponer el bug existente.
 
+## Documentación de la API (Swagger)
+
+La API incluye documentación interactiva generada automáticamente con **Flasgger (Swagger UI)**.
+
+### Acceder a la documentación
+
+Con la aplicación corriendo (vía Docker o local), abre en el navegador:
+
+```
+http://localhost:5000/docs
+```
+
+### Endpoints documentados
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/eventos` | Lista todos los eventos disponibles |
+| GET | `/eventos/<id>/tickets` | Lista tickets disponibles de un evento |
+| GET | `/reservas` | Lista todas las reservas activas |
+| POST | `/reservar` | Reserva un ticket (bloqueo de 30 segundos) |
+| POST | `/confirmar` | Confirma la compra de un ticket reservado |
+| DELETE | `/reservas/<ticket_id>` | Cancela una reserva activa |
+| GET | `/test-db` | Verifica la conexión a la base de datos |
+
+### Ejemplo de uso desde la UI
+
+1. Ir a `http://localhost:5000/docs`
+2. Expandir el endpoint que quieras probar
+3. Hacer clic en **"Try it out"**
+4. Completar los parámetros requeridos
+5. Hacer clic en **"Execute"**
+
+---
+
 ## Arquitectura
 ├── app.py                          ← solo rutas HTTP
 ├── config.py                       ← configuración de BD
